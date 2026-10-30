@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Carrera infinita de Ponis</title>
+    <style>
+        :root { --theme-color: #ffafcc; --theme-color-2: #ffafcc; --theme-text: #ffffff; --share-surface: #ffffff; --share-ink: #2d3748; --share-muted: #f1f5f9; --share-border: #cbd5e1; --share-shadow: 0 8px 24px rgba(0,0,0,.18); }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; padding: 18px;
+            background: linear-gradient(135deg, var(--theme-color), var(--theme-color-2) 55%, #ffffff 160%);
+            transition: background .3s ease;
+            color: #2d3748; font-family: Arial, sans-serif; display: flex;
+            align-items: center; justify-content: center;
+        }
+        #uiWrapper {
+            display: flex; gap: 18px; align-items: center; padding: 16px;
+            max-width: 100%; background: white; border: 4px solid var(--theme-color);
+            border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,.12);
+        }
+        #menuPanel { width: 245px; flex: 0 0 245px; display: flex; flex-direction: column; gap: 13px; }
+        #menuPanel[hidden] { display: none; }
+        .menu-title { margin-bottom: 5px; font-size: 15px; font-weight: bold; }
+        select, button {
+            width: 100%; padding: 10px; border: 2px solid #cbd5e1;
+            border-radius: 8px; font: 600 14px Arial, sans-serif;
+        }
+        select { background: #f8fafc; color: #4a5568; cursor: pointer; }
+        #actionBtn { border: 0; background: var(--theme-color); color: var(--theme-text); font-size: 16px; font-weight: bold; cursor: pointer; }
+        #actionBtn:hover { filter: brightness(.92); }
+        #playerName { width: 100%; padding: 10px; border: 2px solid #cbd5e1; border-radius: 8px; font: 600 14px Arial, sans-serif; }
+        #nameHint { min-height: 16px; color: #c53030; font-size: 12px; }
+        #gameContainer { position: relative; max-width: 100%; overflow: hidden; border: 2px solid #e2e8f0; border-radius: 12px; }
+        #scoreBoard { padding: 12px 16px; padding-right: 145px; background: #fff; min-height: 76px; }
+        #scoreBoard h2 { margin: 0 0 8px; color: #4a5568; font-size: 16px; }
+        #bestScore { margin: 0; color: #4a5568; font-size: 14px; }
+        #historyToggle { position: absolute; top: 8px; right: 10px; width: 40px; padding: 6px; border: 0; background: transparent; color: #4a5568; font-size: 26px; cursor: pointer; }
+        #pauseBtn { position: absolute; top: 12px; right: 55px; width: 38px; padding: 6px; border: 0; border-radius: 8px; background: #f1f5f9; color: #4a5568; font-size: 18px; cursor: pointer; }
+        #shareBtn { position: absolute; top: 12px; right: 99px; width: 38px; height: 34px; padding: 6px; border: 0; background: var(--share-muted); color: var(--share-ink); cursor: pointer; }
+        #shareBtn svg { display: block; width: 22px; height: 22px; }
+        #sharePanel { position: absolute; z-index: 4; top: 58px; right: 8px; width: min(310px, calc(100% - 16px)); max-height: calc(100% - 66px); overflow: auto; padding: 14px; border: 2px solid var(--theme-color); border-radius: 8px; background: var(--share-surface); color: var(--share-ink); box-shadow: var(--share-shadow); }
+        #sharePanel[hidden] { display: none; }
+        #sharePanel h2 { margin: 0 0 12px; font-size: 16px; }
+        .share-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        .share-options a, .share-options button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 8px; border: 1px solid var(--share-border); border-radius: 8px; background: var(--share-muted); color: var(--share-ink); text-decoration: none; font: 600 13px Arial, sans-serif; cursor: pointer; }
+        .share-options a:hover, .share-options button:hover { border-color: var(--theme-color); }
+        #copyLinkBtn, #nativeShareBtn { grid-column: 1 / -1; }
+        #shareStatus { margin: 10px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+        #shareLink { width: 100%; margin-top: 8px; padding: 8px; border: 1px solid var(--share-border); border-radius: 6px; color: var(--share-ink); background: var(--share-surface); }
+        #historyDrawer { display: none; position: absolute; z-index: 3; top: 58px; right: 8px; width: min(320px, calc(100% - 16px)); max-height: 300px; overflow: auto; padding: 14px; background: #fff; border: 2px solid var(--theme-color); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+        #historyDrawer.open { display: block; }
+        #historyDrawer h2 { margin: 0 0 10px; font-size: 16px; }
+        .history-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+        .history-tabs button { padding: 7px; font-size: 12px; cursor: pointer; }
+        .history-view { display: none; }
+        .history-view.active { display: block; }
+        #scoreHistory, #leaderboard { margin: 0; padding-left: 22px; font-size: 13px; }
+        #scoreHistory li, #leaderboard li { margin: 6px 0; }
+        #restartBtn { margin-top: 10px; border: 0; background: var(--theme-color); color: var(--theme-text); font-size: 16px; font-weight: bold; cursor: pointer; }
+        #welcomeOverlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 18px; background: rgba(45,55,72,.56); }
+        #welcomeOverlay[hidden] { display: none; }
+        #welcomeCard { width: min(420px, 100%); padding: 26px; background: #fff; border: 4px solid var(--theme-color); border-radius: 20px; box-shadow: 0 18px 50px rgba(0,0,0,.25); text-align: center; }
+        #welcomeCard h1 { margin: 0 0 8px; font-size: 26px; }
+        #welcomeCard p { margin: 0 0 16px; color: #4a5568; }
+        #playerName { margin-bottom: 8px; }
+        #actionBtn { margin-top: 12px; }
+        #uiWrapper ~ #uiWrapper { display: none; }
+        canvas { display: block; max-width: 100%; height: auto; }
+        @media (max-width: 900px) {
+            body { align-items: flex-start; }
+            #uiWrapper { flex-direction: column; width: min(100%, 750px); }
+            #menuPanel { width: 100%; flex-basis: auto; }
+            #gameContainer { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div id="uiWrapper">
+    <div id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+        <div id="welcomeCard">
+            <h1 id="welcomeTitle">¿Quién viene a jugar hoy?</h1>
+            <p id="welcomeSubtitle">Escribe tu nombre para guardar y consultar tus puntuaciones.</p>
+            <input id="playerName" type="text" maxlength="20" placeholder="Tu nombre" autocomplete="nickname" aria-label="Nombre de usuario">
+            <div id="nameHint" aria-live="polite"></div>
+            <p id="playerBest">Aún no hay partidas con este nombre.</p>
+            <button id="continueBtn" type="button">Continuar a elegir poni</button>
+            <button id="restartBtn" type="button" hidden>Volver a jugar</button>
+        </div>
+    </div>
+    <div id="menuPanel" hidden>
+        <label>
+            <div class="menu-title">🦄 Selecciona tu poni:</div>
+            <select id="ponySelect">
+                <option value="Rainbow Dash">Rainbow Dash ⚡</option>
+                <option value="Twilight Sparkle">Twilight Sparkle 🔮</option>
+                <option value="Pinkie Pie">Pinkie Pie 🎈</option>
+                <option value="Fluttershy">Fluttershy 🦋</option>
+                <option value="Rarity">Rarity 💎</option>
+                <option value="Applejack">Applejack 🍎</option>
+            </select>
+        </label>
+        <label>
+            <div class="menu-title">🏡 Selecciona el fondo:</div>
+            <select id="bgSelect">
+                <option value="cloud">Mansión de Nubes (Rainbow)</option>
+                <option value="tree">Biblioteca Árbol (Twilight)</option>
+                <option value="sugar">Pastelería Sugarcube (Pinkie)</option>
+                <option value="cottage">Cabaña de Campo (Fluttershy)</option>
+                <option value="boutique">Boutique de Modas (Rarity)</option>
+                <option value="barn">Granero de Manzanas (Applejack)</option>
+            </select>
+        </label>
+        <label>
+            <div class="menu-title">🎨 Color de la página:</div>
+            <select id="colorSelect">
+                <option value="#8b5cf6" data-second="#ff4a8e" data-text="#ffffff">Twilight Sparkle: morado y rosado 💜🩷</option>
+                <option value="#ff5fa2" data-second="#ff9ecb" data-text="#ffffff">Pinkie Pie: rosado 🩷</option>
+                <option value="#5bc8f5" data-second="#bde9ff" data-text="#123a52">Rainbow Dash: celeste 🩵</option>
+                <option value="#f28c28" data-second="#ffc178" data-text="#ffffff">Applejack: naranja 🧡</option>
+                <option value="#ffe08a" data-second="#fff3b0" data-text="#6b5310">Fluttershy: amarillo claro 💛</option>
+                <option value="#9d4edd" data-second="#d4a5ff" data-text="#ffffff">Rarity: morado 💜</option>
+            </select>
+        </label>
+        <button id="actionBtn" type="button">¡Iniciar carrera!</button>
+        <div><strong>Controles:</strong> Toca «¡Iniciar carrera!» para empezar · Espacio o ↑ salta · ↓ se agacha<br>Desde 67 puntos aparecen obstáculos por arriba. Cada Cutie Mark suma 25 puntos.</div>
+    </div>
+    <div id="gameContainer">
+        <section id="scoreBoard" aria-label="Puntuación del jugador">
+            <h2>🏆 Mejor puntuación</h2>
+            <p id="bestScore">Inicia una partida para ver tu puntuación.</p>
+        </section>
+        <button id="pauseBtn" type="button" aria-label="Pausar carrera" title="Pausar" disabled>⏸</button>
+        <button id="shareBtn" type="button" aria-label="Compartir juego" title="Compartir" aria-expanded="false" aria-controls="sharePanel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 3 7 7-7 7V12C7 12 4 15 3 20V11c0-3 4-5 11-5Z"/></svg></button>
+        <aside id="sharePanel" aria-label="Compartir juego" hidden>
+            <h2>Compartir carrera de ponis</h2>
+            <div class="share-options">
+                <button id="copyLinkBtn" type="button">🔗 Copiar enlace</button>
+                <a data-social="whatsapp" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                <a data-social="facebook" target="_blank" rel="noopener noreferrer">Facebook</a>
+                <button data-share-app="Instagram" type="button">Instagram</button>
+                <button data-share-app="TikTok" type="button">TikTok</button>
+                <a data-social="reddit" target="_blank" rel="noopener noreferrer">Reddit</a>
+                <a data-social="pinterest" target="_blank" rel="noopener noreferrer">Pinterest</a>
+                <a data-social="linkedin" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+                <a data-social="email">✉ Correo</a>
+                <button id="nativeShareBtn" type="button">↗ Más redes</button>
+            </div>
+            <input id="shareLink" aria-label="Enlace del juego" readonly hidden>
+            <p id="shareStatus" role="status" aria-live="polite"></p>
+        </aside>
+        <button id="historyToggle" type="button" aria-label="Abrir historial" aria-expanded="false">☰</button>
+        <aside id="historyDrawer" aria-label="Historial de partidas">
+            <h2>📜 Historial y clasificación</h2>
+            <div class="history-tabs" role="tablist">
+                <button type="button" class="historyTab" data-view="historyView" aria-selected="true">Mi historial</button>
+                <button type="button" class="historyTab" data-view="rankingView" aria-selected="false">Mejores por jugador</button>
+            </div>
+            <div id="historyView" class="history-view active"><ol id="scoreHistory"><li>Aún no hay partidas</li></ol></div>
+            <div id="rankingView" class="history-view"><ol id="leaderboard"><li>Aún no hay puntuaciones</li></ol></div>
+        </aside>
+        <canvas id="gameCanvas" width="750" height="450" aria-label="Carrera infinita de ponis"></canvas>
+    </div>
+</div>
+<script>
+(() => {
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const ponySelect = document.getElementById("ponySelect");
+    const bgSelect = document.getElementById("bgSelect");
+    const colorSelect = document.getElementById("colorSelect");
+    const actionBtn = document.getElementById("actionBtn");
+    const continueBtn = document.getElementById("continueBtn");
+    const menuPanel = document.getElementById("menuPanel");
+    const playerNameInput = document.getElementById("playerName");
+    const nameHint = document.getElementById("nameHint");
+    const scoreHistoryList = document.getElementById("scoreHistory");
+    const leaderboardList = document.getElementById("leaderboard");
+    const bestScoreLabel = document.getElementById("bestScore");
+    const playerBestLabel = document.getElementById("playerBest");
+    const welcomeOverlay = document.getElementById("welcomeOverlay");
+    const historyToggle = document.getElementById("historyToggle");
+    const historyDrawer = document.getElementById("historyDrawer");
+    const historyTabs = document.querySelectorAll(".historyTab");
+    const historyViews = document.querySelectorAll(".history-view");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const pinkieImage = new Image();
+    const pinkieLayers = [];
+    // Separate the original legs from the coat so the uploaded drawing can walk.
+    const legShapes = [
+        { pivot: [.48, .66], phase: 0, points: [[.43,.65],[.50,.68],[.48,.82],[.50,.94],[.49,.965],[.35,.965],[.35,.88],[.38,.76]] },
+        { pivot: [.58, .65], phase: Math.PI, points: [[.51,.65],[.64,.66],[.60,.80],[.61,.95],[.61,.985],[.46,.985],[.45,.94],[.48,.82]] },
+        { pivot: [.66, .65], phase: 0, points: [[.63,.65],[.70,.66],[.70,.77],[.75,.87],[.79,.94],[.77,.965],[.65,.965],[.62,.90],[.62,.80]] }
+    ];
+    pinkieImage.addEventListener("load", () => {
+        const width = pinkieImage.naturalWidth, height = pinkieImage.naturalHeight;
+        const layer = () => { const c = document.createElement("canvas"); c.width = width; c.height = height; return c; };
+        const body = layer();
+        const bodyContext = body.getContext("2d");
+        bodyContext.drawImage(pinkieImage, 0, 0);
+        legShapes.forEach(shape => {
+            const leg = layer();
+            const legContext = leg.getContext("2d");
+            const trace = context => {
+                context.beginPath();
+                shape.points.forEach(([px, py], index) => {
+                    if (index === 0) context.moveTo(px * width, py * height);
+                    else context.lineTo(px * width, py * height);
+                });
+                context.closePath();
+            };
+            trace(legContext); legContext.clip(); legContext.drawImage(pinkieImage, 0, 0);
+            bodyContext.globalCompositeOperation = "destination-out";
+            trace(bodyContext); bodyContext.fill();
+            pinkieLayers.push({ image: leg, ...shape });
+        });
+        pinkieLayers.push({ image: body });
+    });
+    const pinkieSource = new URLSearchParams(location.search).get("pinkie");
+    if (pinkieSource) pinkieImage.src = pinkieSource;
+    // One background panorama per pony scene, passed in by the app.
+    const bgImages = {};
+    try {
+        const bgSources = JSON.parse(new URLSearchParams(location.search).get("bgs") || "{}");
+        Object.entries(bgSources).forEach(([key, src]) => {
+            const img = new Image();
+            img.src = src;
+            bgImages[key] = img;
+        });
+    } catch (error) {}
+    const floorColors = {
+        cloud: ["#ffffff", "#cfe9ff", "#7fb8e6"],
+        tree: ["#f3e3c3", "#d9b98a", "#9a7445"],
+        sugar: ["#fff0f6", "#ffc2dc", "#e05a9a"],
+        cottage: ["#fff8d6", "#f2dc94", "#b8964a"],
+        boutique: ["#f6edff", "#dcc4f5", "#9d6ad1"],
+        barn: ["#f6dfc0", "#d9a86c", "#9c6431"],
+    };
+    // A fixed light path so it's clear where the pony walks; it does not scroll.
+    function drawStaticFloor() {
+        const [top, bottom, edge] = floorColors[bgSelect.value] || floorColors.sugar;
+        ctx.save();
+        const y = groundY - 3;
+        const g = ctx.createLinearGradient(0, y, 0, y + 22);
+        g.addColorStop(0, top);
+        g.addColorStop(1, bottom);
+        ctx.globalAlpha = .92;
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.roundRect(-10, y, 770, 22, 10); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(0, y + 1); ctx.lineTo(750, y + 1); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,.7)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(0, y + 5); ctx.lineTo(750, y + 5); ctx.stroke();
+        ctx.fillStyle = "rgba(0,0,0,.12)";
+        ctx.fillRect(0, y + 22, 750, 3);
+        ctx.restore();
+    }
+    const cupcakeImage = new Image();
+    const cupcakeSource = new URLSearchParams(location.search).get("cupcake");
+    if (cupcakeSource) cupcakeImage.src = cupcakeSource;
+    const shareBtn = document.getElementById("shareBtn");
+    const sharePanel = document.getElementById("sharePanel");
+    const shareStatus = document.getElementById("shareStatus");
+    const shareLink = document.getElementById("shareLink");
+    const shareUrl = new URL("/", location.href).href;
+    const shareText = "¡Juega conmigo a Carrera infinita de Ponis!";
+    const encodedUrl = encodeURIComponent(shareUrl);
+    const encodedText = encodeURIComponent(shareText);
+    const socialLinks = {
+        whatsapp: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+        reddit: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodedText}`,
+        pinterest: `https://www.pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedText}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+        email: `mailto:?subject=${encodeURIComponent("Carrera infinita de Ponis")}&body=${encodedText}%0A${encodedUrl}`
+    };
+    document.querySelectorAll("[data-social]").forEach(link => { link.href = socialLinks[link.dataset.social]; });
+    function closeSharing() {
+        sharePanel.hidden = true;
+        shareBtn.setAttribute("aria-expanded", "false");
+    }
+    shareBtn.addEventListener("click", () => {
+        sharePanel.hidden = !sharePanel.hidden;
+        shareBtn.setAttribute("aria-expanded", String(!sharePanel.hidden));
+        historyDrawer.classList.remove("open");
+        historyToggle.setAttribute("aria-expanded", "false");
+    });
+    document.addEventListener("click", event => {
+        if (!sharePanel.contains(event.target) && !shareBtn.contains(event.target)) closeSharing();
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !sharePanel.hidden) { closeSharing(); shareBtn.focus(); }
+    });
+    async function copyShareLink() {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            shareStatus.textContent = "¡Enlace copiado!";
+        } catch {
+            shareLink.hidden = false;
+            shareLink.value = shareUrl;
+            shareLink.focus();
+            shareLink.select();
+            shareStatus.textContent = "Selecciona y copia el enlace.";
+        }
+    }
+    document.getElementById("copyLinkBtn").addEventListener("click", copyShareLink);
+    document.querySelectorAll("[data-share-app]").forEach(button => button.addEventListener("click", async () => {
+        const app = button.dataset.shareApp;
+        // These apps do not expose a public URL-sharing endpoint.
+        if (typeof navigator.share === "function") {
+            try { await navigator.share({ title: "Carrera infinita de Ponis", text: shareText, url: shareUrl }); return; }
+            catch (error) { if (error.name === "AbortError") return; }
+        }
+        await copyShareLink();
+        shareStatus.textContent = shareLink.hidden ? `Enlace copiado: pégalo en ${app}.` : `Copia el enlace y pégalo en ${app}.`;
+    }));
+    document.getElementById("nativeShareBtn").addEventListener("click", async () => {
+        if (typeof navigator.share === "function") {
+            try { await navigator.share({ title: "Carrera infinita de Ponis", text: shareText, url: shareUrl }); }
+            catch (error) { if (error.name !== "AbortError") { await copyShareLink(); shareStatus.textContent = "Comparte el enlace copiado en tu red favorita."; } }
+        } else {
+            await copyShareLink();
+            shareStatus.textContent = shareLink.hidden ? "Enlace copiado: pégalo en Instagram, TikTok o tu red favorita." : "Copia el enlace y pégalo en Instagram, TikTok o tu red favorita.";
+        }
+    });
+    const scoreStorageKey = "pony-race-score-history";
+    const scoreResetKey = "pony-race-score-history-reset-v1";
+    if (!localStorage.getItem(scoreResetKey)) {
+        localStorage.removeItem(scoreStorageKey);
+        localStorage.setItem(scoreResetKey, "done");
+    }
+    let activePlayerName = "";
+    let fallAngle = 0;
+    let fallFrames = 0;
+
+    const SCORES_URL = "https://oejvoqvxbfwghyptbxpd.supabase.co/rest/v1/pony_scores";
+    const SCORES_KEY = "sb_publishable_vO0OGlbavZ1pOnDjJiXLVA_9QIjFBSe";
+    let cachedHistory = [];
+    let playerHistoryCache = { name: "", rows: [] };
+    function loadScoreHistory() { return cachedHistory; }
+    async function fetchScoreHistory() {
+        try {
+            const res = await fetch(SCORES_URL + "?select=name,score,created_at&order=created_at.desc&limit=1000", { headers: { apikey: SCORES_KEY } });
+            if (res.ok) cachedHistory = await res.json();
+        } catch (error) {}
+        renderScoreHistory();
+        fetchPlayerHistory();
+    }
+    // Each player's own permanent history, read straight from the database by name.
+    async function fetchPlayerHistory() {
+        const name = (activePlayerName || playerNameInput.value).trim();
+        if (!name) return;
+        const pattern = name.replace(/[\\%_*]/g, ch => "\\" + ch);
+        try {
+            const res = await fetch(SCORES_URL + "?select=name,score,created_at&order=created_at.desc&limit=5000&name=ilike." + encodeURIComponent(pattern), { headers: { apikey: SCORES_KEY } });
+            if (res.ok) playerHistoryCache = { name: name.toLowerCase(), rows: await res.json() };
+        } catch (error) {}
+        renderScoreHistory();
+    }
+
+    function renderScoreHistory() {
+        const history = loadScoreHistory().filter(entry =>
+            entry && typeof entry.name === "string" && Number.isFinite(Number(entry.score))
+        );
+        const playerName = (activePlayerName || playerNameInput.value).trim();
+        const fromCache = history.filter(entry => entry.name.toLowerCase() === playerName.toLowerCase());
+        const playerHistory = playerHistoryCache.name === playerName.toLowerCase() && playerHistoryCache.rows.length >= fromCache.length
+            ? playerHistoryCache.rows : fromCache;
+        scoreHistoryList.replaceChildren();
+        leaderboardList.replaceChildren();
+
+        if (!playerHistory.length) {
+            scoreHistoryList.innerHTML = playerName ? `<li>Aún no hay partidas de ${playerName.replace(/[<>&]/g, "")}</li>` : "<li>Escribe tu nombre para ver tu historial</li>";
+        } else {
+            playerHistory.forEach(entry => {
+                const item = document.createElement("li");
+                const date = entry.created_at ? new Date(entry.created_at).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" }) : "hoy";
+                item.textContent = `${date} · ${Math.floor(Number(entry.score))} puntos`;
+                scoreHistoryList.appendChild(item);
+            });
+        }
+        if (!history.length) {
+            leaderboardList.innerHTML = "<li>Aún no hay puntuaciones</li>";
+        } else {
+            const bestByPlayer = new Map();
+            history.forEach(entry => {
+                const key = entry.name.trim().toLowerCase();
+                const current = bestByPlayer.get(key);
+                if (!current || Number(entry.score) > Number(current.score)) {
+                    bestByPlayer.set(key, { name: entry.name.trim(), score: Number(entry.score) });
+                }
+            });
+            [...bestByPlayer.values()].sort((a, b) => b.score - a.score).forEach((entry, index) => {
+                const item = document.createElement("li");
+                item.textContent = `${entry.name}: ${Math.floor(entry.score)} puntos`;
+                leaderboardList.appendChild(item);
+            });
+        }
+
+        if (playerHistory.length) {
+            const best = Math.max(...playerHistory.map(entry => Number(entry.score)));
+            bestScoreLabel.textContent = `${playerName}: ${Math.floor(best)} puntos`;
+            playerBestLabel.textContent = `Tu mejor puntuación: ${Math.floor(best)} puntos`;
+        } else {
+            bestScoreLabel.textContent = playerName ? `Aún no hay puntuaciones para ${playerName}.` : "Inicia una partida para ver tu puntuación.";
+            playerBestLabel.textContent = "Aún no hay partidas con este nombre.";
+        }
+    }
+
+    function saveCurrentScore() {
+        const entry = { name: activePlayerName, score: Math.floor(score) };
+        cachedHistory.unshift(entry);
+        renderScoreHistory();
+        fetch(SCORES_URL, { method: "POST", headers: { apikey: SCORES_KEY, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(entry) })
+            .then(() => fetchScoreHistory()).catch(() => {});
+    }
+
+    renderScoreHistory();
+    fetchScoreHistory();
+    playerNameInput.addEventListener("input", () => {
+        nameHint.textContent = "";
+        activePlayerName = "";
+        renderScoreHistory();
+        clearTimeout(window.__nameTimer);
+        window.__nameTimer = setTimeout(fetchPlayerHistory, 400);
+    });
+    historyToggle.addEventListener("click", () => {
+        closeSharing();
+        const isOpen = historyDrawer.classList.toggle("open");
+        historyToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+    historyTabs.forEach(tab => tab.addEventListener("click", () => {
+        historyTabs.forEach(button => button.setAttribute("aria-selected", String(button === tab)));
+        historyViews.forEach(view => view.classList.toggle("active", view.id === tab.dataset.view));
+    }));
+    pauseBtn.addEventListener("click", () => {
+        if (state === "running") {
+            state = "paused";
+            pauseBtn.textContent = "▶";
+            pauseBtn.title = "Reanudar";
+            pauseBtn.setAttribute("aria-label", "Reanudar carrera");
+        } else if (state === "paused") {
+            state = "running";
+            pauseBtn.textContent = "⏸";
+            pauseBtn.title = "Pausar";
+            pauseBtn.setAttribute("aria-label", "Pausar carrera");
+        }
+    });
+    restartBtn.addEventListener("click", () => {
+        startGame();
+        welcomeOverlay.hidden = true;
+        restartBtn.hidden = true;
+    });
+
+    const groundY = 370;
+    const ponyX = 100;
+    const ponies = {
+        "Rainbow Dash": { body: "#7ecbf3", hair: ["#ff595e", "#ffca3a", "#8ac926", "#1982c4"], eye: "#a11d4d" },
+        "Twilight Sparkle": { body: "#a78bfa", hair: ["#6a3fc8", "#ff4a8e", "#8b5cf6"], eye: "#4a154b" },
+        "Pinkie Pie": { body: "#ffafcc", hair: ["#ff4a8e", "#ff70a6", "#ff4a8e"], eye: "#1982c4" },
+        "Fluttershy": { body: "#fff3b0", hair: ["#ffb6c1", "#ffa6c9", "#ffb6c1"], eye: "#2a9d8f" },
+        "Rarity": { body: "#c4a1f5", hair: ["#7209b7", "#560bad", "#480ca8"], eye: "#1982c4" },
+        "Applejack": { body: "#f28c28", hair: ["#ffbf47", "#e87817"], eye: "#2a9d8f" }
+    };
+    const skies = {
+        cloud: ["#dff7ff", "#ffffff", "#d8f3dc"], tree: ["#e2ece9", "#52b788", "#cde8cf"],
+        sugar: ["#faedcd", "#ffb3c1", "#f6d9a8"], cottage: ["#f4f9f4", "#ccd5ae", "#dce8c4"],
+        boutique: ["#f3e5f5", "#c77dff", "#eadcf0"], barn: ["#fefae0", "#e63946", "#e9d8a6"]
+    };
+    const ponyCloudColors = {
+        "Rainbow Dash": ["#e8f7ff", "#a8ddff"],
+        "Twilight Sparkle": ["#f0e8ff", "#c6aff2"],
+        "Pinkie Pie": ["#fff0f7", "#ffb5d5"],
+        "Fluttershy": ["#fff8e4", "#f4d0dc"],
+        "Rarity": ["#f7f0ff", "#d4c0f0"],
+        "Applejack": ["#fff6dc", "#f3d18b"]
+    };
+    let state = "menu";
+    let score = 0;
+    let collected = 0;
+    let speed = 5;
+    let tick = 0;
+    let jumpY = 0;
+    let jumpVelocity = 0;
+    let isCrouching = false;
+    let obstacleTimer = 0;
+    let markTimer = 0;
+    let obstacles = [];
+    let marks = [];
+
+
+    const ponyPageColors = {
+        "Twilight Sparkle": "#8b5cf6",
+        "Pinkie Pie": "#ff5fa2",
+        "Rainbow Dash": "#5bc8f5",
+        "Applejack": "#f28c28",
+        "Fluttershy": "#ffe08a",
+        "Rarity": "#9d4edd"
+    };
+
+    function applyPageColor(option) {
+        const main = option.value;
+        document.documentElement.style.setProperty("--theme-color", main);
+        document.documentElement.style.setProperty("--theme-color-2", option.dataset.second || main);
+        document.documentElement.style.setProperty("--theme-text", option.dataset.text || "#ffffff");
+    }
+
+    function syncPageColorToPony() {
+        const main = ponyPageColors[ponySelect.value];
+        if (!main) return;
+        colorSelect.value = main;
+        applyPageColor(colorSelect.selectedOptions[0]);
+    }
+
+    colorSelect.addEventListener("change", () => applyPageColor(colorSelect.selectedOptions[0]));
+    ponySelect.addEventListener("change", syncPageColorToPony);
+    const ponyBackgrounds = {
+        "Rainbow Dash": "cloud", "Twilight Sparkle": "tree", "Pinkie Pie": "sugar",
+        "Fluttershy": "cottage", "Rarity": "boutique", "Applejack": "barn",
+    };
+    function syncBackgroundToPony() {
+        if (ponyBackgrounds[ponySelect.value]) bgSelect.value = ponyBackgrounds[ponySelect.value];
+    }
+    ponySelect.addEventListener("change", syncBackgroundToPony);
+    syncBackgroundToPony();
+    syncPageColorToPony();
+
+
+    function continueToPonySelection() {
+        const enteredName = playerNameInput.value.trim();
+        if (!enteredName) {
+            nameHint.textContent = "Escribe tu nombre para continuar.";
+            playerNameInput.focus();
+            return;
+        }
+        activePlayerName = enteredName;
+        nameHint.textContent = "";
+        renderScoreHistory();
+        fetchPlayerHistory();
+        document.getElementById("welcomeTitle").textContent = "¡Prepara tu carrera!";
+        document.getElementById("welcomeSubtitle").textContent = "Elige tu poni, el fondo y el color. Luego toca Iniciar carrera.";
+        continueBtn.textContent = "Continuar";
+        menuPanel.hidden = false;
+        welcomeOverlay.hidden = true;
+    }
+
+    function startGame() {
+        if (!activePlayerName) return;
+        state = "running";
+        score = 0;
+        collected = 0;
+        speed = 5;
+        jumpY = 0;
+        jumpVelocity = 0;
+        fallAngle = 0;
+        fallFrames = 0;
+        isCrouching = false;
+        obstacleTimer = 65;
+        markTimer = 45;
+        obstacles = [];
+        marks = [];
+        pauseBtn.disabled = false;
+        pauseBtn.textContent = "⏸";
+        pauseBtn.title = "Pausar";
+        pauseBtn.setAttribute("aria-label", "Pausar carrera");
+        restartBtn.hidden = true;
+    }
+
+
+    continueBtn.addEventListener("click", continueToPonySelection);
+    actionBtn.addEventListener("click", startGame);
+
+
+    function jump() {
+        if (state === "running" && jumpY === 0) jumpVelocity = 12;
+    }
+
+
+    document.addEventListener("keydown", event => {
+        const key = (event.key || "").toLowerCase();
+        if (key === "arrowdown") {
+            if (state === "running") {
+                event.preventDefault();
+                isCrouching = true;
+            }
+        } else if (key === " " || key === "arrowup" || event.code === "Space") {
+            if (state === "running") {
+                event.preventDefault();
+                jump();
+            }
+        }
+    }, true);
+
+
+    document.addEventListener("keyup", event => {
+        if ((event.key || "").toLowerCase() === "arrowdown") isCrouching = false;
+    });
+    window.addEventListener("blur", () => { isCrouching = false; });
+
+
+    function drawPony(x, baseline, data, lift, running, crouched = false, falling = 0) {
+        ctx.save();
+        const shadowScale = Math.max(.38, 1 - lift / 150);
+        ctx.fillStyle = `rgba(50, 55, 70, ${.18 * shadowScale})`;
+        ctx.beginPath();
+        ctx.ellipse(x + 28, baseline - 2, 30 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (crouched && lift === 0) {
+            ctx.translate(x, baseline);
+            ctx.scale(1, 0.72);
+            ctx.translate(-x, -baseline);
+        }
+        if (falling > 0) {
+            ctx.translate(x + 28, baseline - 25);
+            ctx.rotate(falling);
+            ctx.translate(-(x + 28), -(baseline - 25));
+        }
+        const bob = running && lift === 0 ? Math.sin(tick * 0.35) * 1.5 : 0;
+        const y = baseline - lift + bob;
+        if (ponySelect.value === "Pinkie Pie" && pinkieImage.complete && pinkieImage.naturalWidth > 0) {
+            // Preserve the existing collision area and jump/crouch/fall transforms.
+            const spriteHeight = 76;
+            const spriteWidth = spriteHeight * pinkieImage.naturalWidth / pinkieImage.naturalHeight;
+            const spriteX = x + 62 - spriteWidth, spriteY = y - spriteHeight;
+            if (pinkieLayers.length) {
+                pinkieLayers.forEach(layer => {
+                    ctx.save();
+                    if (layer.pivot) {
+                        const px = spriteX + layer.pivot[0] * spriteWidth;
+                        const py = spriteY + layer.pivot[1] * spriteHeight;
+                        const angle = running && lift === 0 && !falling ? Math.sin(tick * .24 + layer.phase) * .28 : 0;
+                        ctx.translate(px, py); ctx.rotate(angle); ctx.translate(-px, -py);
+                    }
+                    ctx.drawImage(layer.image, spriteX, spriteY, spriteWidth, spriteHeight);
+                    ctx.restore();
+                });
+            } else ctx.drawImage(pinkieImage, spriteX, spriteY, spriteWidth, spriteHeight);
+            ctx.restore();
+            return;
+        }
+        const outline = "#493b50";
+        const bodyGradient = ctx.createLinearGradient(x + 10, y - 49, x + 48, y - 7);
+        bodyGradient.addColorStop(0, "#ffffff");
+        bodyGradient.addColorStop(0.22, data.body);
+        bodyGradient.addColorStop(1, data.body);
+        const strokeShape = () => { ctx.strokeStyle = outline; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.stroke(); };
+
+
+        // Flowing tail and mane sit behind the body.
+        ctx.fillStyle = data.hair[0];
+        ctx.beginPath();
+        ctx.moveTo(x + 9, y - 30);
+        ctx.bezierCurveTo(x - 4, y - 27, x - 8, y - 13, x - 2, y - 10);
+        ctx.bezierCurveTo(x + 2, y - 17, x + 10, y - 17, x + 14, y - 22);
+        ctx.closePath(); ctx.fill(); strokeShape();
+        data.hair.slice(1).forEach((color, i) => {
+            ctx.strokeStyle = color; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(x + 4, y - 15 + i * 2);
+            ctx.quadraticCurveTo(x - 2, y - 14 + i * 2, x + 1, y - 11 + i * 2);
+            ctx.stroke();
+        });
+
+
+        // Four separate legs with rounded hooves and a gentle running cycle.
+        const stride = running && lift === 0 ? Math.sin(tick * 0.35) * 4 : 0;
+        [[x + 12, stride], [x + 22, -stride], [x + 34, -stride], [x + 42, stride]].forEach(([legX, swing], i) => {
+            const legTop = y - 17 + (i < 2 ? 1 : 0);
+            ctx.fillStyle = data.body;
+            ctx.beginPath();
+            ctx.moveTo(legX - 3, legTop); ctx.lineTo(legX + 3, legTop);
+            ctx.lineTo(legX + 3 + swing * .35, y - 4);
+            ctx.lineTo(legX - 3 + swing * .35, y - 4); ctx.closePath();
+            ctx.fill(); strokeShape();
+            ctx.fillStyle = data.hoof || "#73586a";
+            ctx.beginPath(); ctx.roundRect(legX - 3 + swing * .35, y - 7, 7, 5, 1.5); ctx.fill(); strokeShape();
+        });
+
+
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath(); ctx.ellipse(x + 25, y - 25, 23, 15, -0.06, 0, Math.PI * 2); ctx.fill(); strokeShape();
+        // Soft highlights add volume without hiding each pony's coat color.
+        ctx.strokeStyle = "rgba(255,255,255,.62)"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x + 12, y - 33); ctx.quadraticCurveTo(x + 24, y - 41, x + 35, y - 34); ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,.2)";
+        ctx.beginPath(); ctx.ellipse(x + 52, y - 32, 3.2, 1.8, -.25, 0, Math.PI * 2); ctx.fill();
+        // A soft wing on pegasi; the other characters get a clean shoulder highlight.
+        if (ponySelect.value === "Rainbow Dash" || ponySelect.value === "Fluttershy") {
+            ctx.fillStyle = data.body; ctx.beginPath();
+            ctx.moveTo(x + 17, y - 32); ctx.quadraticCurveTo(x + 26, y - 47, x + 34, y - 33);
+            ctx.quadraticCurveTo(x + 29, y - 25, x + 19, y - 23); ctx.closePath(); ctx.fill(); strokeShape();
+            ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(x + 21, y - 31); ctx.quadraticCurveTo(x + 27, y - 36, x + 31, y - 31); ctx.stroke();
+        } else {
+            ctx.strokeStyle = "rgba(255,255,255,.65)"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.ellipse(x + 19, y - 28, 9, 7, -.2, 3.4, 5.7); ctx.stroke();
+        }
+
+
+        // Head, muzzle, ears and horn.
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath(); ctx.ellipse(x + 44, y - 42, 14, 15, -.12, 0, Math.PI * 2); ctx.fill(); strokeShape();
+        ctx.beginPath(); ctx.ellipse(x + 53, y - 36, 9, 6, -.12, 0, Math.PI * 2); ctx.fill(); strokeShape();
+        ctx.fillStyle = data.body; ctx.beginPath();
+        ctx.moveTo(x + 36, y - 51); ctx.lineTo(x + 37, y - 63); ctx.quadraticCurveTo(x + 44, y - 58, x + 45, y - 49); ctx.closePath(); ctx.fill(); strokeShape();
+        ctx.fillStyle = "#f6b8c8"; ctx.beginPath(); ctx.moveTo(x + 39, y - 53); ctx.lineTo(x + 39, y - 59); ctx.lineTo(x + 43, y - 51); ctx.closePath(); ctx.fill();
+        if (ponySelect.value === "Twilight Sparkle" || ponySelect.value === "Rarity") {
+            ctx.fillStyle = "#f7e4ff"; ctx.beginPath();
+            ctx.moveTo(x + 43, y - 53); ctx.lineTo(x + 47, y - 64); ctx.lineTo(x + 49, y - 51); ctx.closePath(); ctx.fill(); strokeShape();
+        }
+
+
+        // Layered mane locks use each pony's signature colors.
+        data.hair.forEach((color, i) => {
+            ctx.fillStyle = color; ctx.beginPath();
+            ctx.moveTo(x + 34 - i * 2, y - 48 - i * 1.5);
+            ctx.quadraticCurveTo(x + 38 - i * 2, y - 61, x + 49 - i, y - 55);
+            ctx.quadraticCurveTo(x + 48 - i, y - 47, x + 43 - i * 2, y - 42);
+            ctx.quadraticCurveTo(x + 40 - i * 2, y - 48, x + 34 - i * 2, y - 48);
+            ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = "rgba(55,39,65,.78)"; ctx.lineWidth = 1.2; ctx.stroke();
+        });
+        // Small signature silhouettes distinguish each pony beyond coat and mane colors.
+        if (ponySelect.value === "Pinkie Pie") {
+            ctx.fillStyle = data.hair[0];
+            [[x + 37, y - 57, 5], [x + 46, y - 59, 4], [x + 34, y - 52, 3.5]].forEach(([cx, cy, r]) => {
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = "rgba(55,39,65,.65)"; ctx.lineWidth = 1; ctx.stroke();
+            });
+        } else if (ponySelect.value === "Rainbow Dash") {
+            ctx.fillStyle = data.hair[0]; ctx.beginPath();
+            ctx.moveTo(x + 34, y - 48); ctx.lineTo(x + 36, y - 60); ctx.lineTo(x + 42, y - 54);
+            ctx.lineTo(x + 47, y - 63); ctx.lineTo(x + 50, y - 52); ctx.lineTo(x + 55, y - 48);
+            ctx.closePath(); ctx.fill(); strokeShape();
+        } else if (ponySelect.value === "Fluttershy") {
+            ctx.strokeStyle = data.hair[0]; ctx.lineWidth = 5; ctx.lineCap = "round";
+            ctx.beginPath(); ctx.moveTo(x + 36, y - 51); ctx.quadraticCurveTo(x + 40, y - 58, x + 50, y - 54);
+            ctx.quadraticCurveTo(x + 45, y - 49, x + 43, y - 45); ctx.stroke();
+        } else if (ponySelect.value === "Applejack") {
+            ctx.fillStyle = "#d99b45"; ctx.strokeStyle = outline; ctx.lineWidth = 1.7;
+            ctx.beginPath(); ctx.ellipse(x + 43, y - 61, 13, 3.5, -.08, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = "#f3c66b"; ctx.beginPath(); ctx.roundRect(x + 37, y - 71, 13, 11, 3); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = "#b87932"; ctx.fillRect(x + 38, y - 63, 11, 2);
+        }
+        ctx.strokeStyle = "rgba(255,255,255,.62)"; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x + 38, y - 53); ctx.quadraticCurveTo(x + 42, y - 58, x + 47, y - 57); ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(x + 48, y - 43, 4.8, 7.5, -.12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = data.eye; ctx.beginPath(); ctx.ellipse(x + 49, y - 42, 2.8, 5.1, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#332638"; ctx.beginPath(); ctx.ellipse(x + 49.5, y - 41.5, 1.35, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x + 50.5, y - 45, 1.7, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = outline; ctx.lineWidth = 1.25; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x + 45, y - 49); ctx.lineTo(x + 44, y - 51);
+        ctx.moveTo(x + 48, y - 50); ctx.lineTo(x + 48, y - 52); ctx.stroke();
+        ctx.strokeStyle = outline; ctx.lineWidth = 1.5; ctx.beginPath();
+        ctx.moveTo(x + 44, y - 49); ctx.quadraticCurveTo(x + 48, y - 52, x + 52, y - 49); ctx.stroke();
+        ctx.fillStyle = "#704d52"; ctx.beginPath(); ctx.ellipse(x + 58, y - 37, 1.2, 1, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(245,125,145,.38)";
+        ctx.beginPath(); ctx.ellipse(x + 53, y - 32, 3.3, 1.8, -.2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#704d52"; ctx.lineWidth = 1.1;
+        ctx.beginPath(); ctx.moveTo(x + 54, y - 34);
+        ctx.quadraticCurveTo(x + 58, y - 32, x + 61, y - 34); ctx.stroke();
+        // A tiny, character-specific cutie mark on the flank.
+        ctx.save();
+        ctx.translate(x + 28, y - 25);
+        ctx.lineJoin = "round";
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "rgba(73,59,80,.65)";
+        if (ponySelect.value === "Applejack") {
+            [-4, 0, 4].forEach((dx, i) => {
+                ctx.fillStyle = i === 1 ? "#ef476f" : "#e63946";
+                ctx.beginPath(); ctx.arc(dx, 1, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = "#438a45"; ctx.beginPath(); ctx.ellipse(dx + 1, -2, 1.8, .8, -.5, 0, Math.PI * 2); ctx.fill();
+            });
+        } else if (ponySelect.value === "Rarity") {
+            [-3, 3].forEach((dx, i) => {
+                ctx.fillStyle = i ? "#20c997" : "#8e44ad";
+                ctx.beginPath(); ctx.moveTo(dx, -4); ctx.lineTo(dx + 2.5, 0); ctx.lineTo(dx, 4); ctx.lineTo(dx - 2.5, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+            });
+        } else if (ponySelect.value === "Fluttershy") {
+            ctx.fillStyle = "#f08ca8";
+            [-3, 0, 3].forEach((dx, i) => {
+                ctx.beginPath(); ctx.ellipse(dx, i === 1 ? 0 : -1, 1.8, 2.6, dx * .12, 0, Math.PI * 2); ctx.fill();
+            });
+            ctx.fillStyle = "#f4d35e"; ctx.beginPath(); ctx.arc(0, 0, 1.3, 0, Math.PI * 2); ctx.fill();
+        } else if (ponySelect.value === "Pinkie Pie") {
+            ctx.fillStyle = "#ff4a8e";
+            [[-3, 0], [3, 0], [0, -3], [0, 3]].forEach(([px, py]) => {
+                ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI * 2); ctx.fill();
+            });
+            ctx.fillStyle = "#ffca3a"; ctx.beginPath(); ctx.arc(0, 0, 1.4, 0, Math.PI * 2); ctx.fill();
+        } else if (ponySelect.value === "Twilight Sparkle") {
+            ctx.fillStyle = "#fff2b2"; ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const angle = -Math.PI / 2 + i * Math.PI / 5;
+                const radius = i % 2 ? 1.5 : 3.5;
+                const px = Math.cos(angle) * radius, py = Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = "#ff4a8e"; ctx.beginPath(); ctx.arc(3, 2, 1.5, 0, Math.PI * 2); ctx.fill();
+        } else {
+            ctx.fillStyle = "#ff595e"; ctx.beginPath();
+            ctx.moveTo(-4, -3); ctx.lineTo(-1, -3); ctx.lineTo(1, -5); ctx.lineTo(0, -1);
+            ctx.lineTo(4, -1); ctx.lineTo(-1, 5); ctx.lineTo(0, 1); ctx.lineTo(-4, 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
+        ctx.restore();
+    }
+
+
+    // --- Cutie mark shapes -------------------------------------------------
+    // Each pony's collectible is drawn as her own cutie mark, matching the
+    // reference sheet: Twilight's stars, Pinkie's balloons, Fluttershy's
+    // butterflies, Applejack's apples, Rainbow Dash's weather bolt and
+    // Rarity's diamonds.
+    function star6(cx, cy, r, rot) {
+        ctx.beginPath();
+        for (let i = 0; i < 12; i++) {
+            const radius = i % 2 ? r * .45 : r;
+            const a = rot + i * Math.PI / 6;
+            const px = cx + Math.cos(a) * radius;
+            const py = cy + Math.sin(a) * radius;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+    }
+
+    function appleShape(cx, cy, r) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * .5);
+        ctx.bezierCurveTo(cx + r * 1.2, cy - r * 1.15, cx + r * 1.05, cy + r * .8, cx, cy + r * 1.05);
+        ctx.bezierCurveTo(cx - r * 1.05, cy + r * .8, cx - r * 1.2, cy - r * 1.15, cx, cy - r * .5);
+        ctx.closePath();
+    }
+
+    function appleMark(cx, cy, r) {
+        ctx.lineCap = "round";
+        ctx.strokeStyle = "#7a4a20";
+        ctx.lineWidth = Math.max(.9, r * .16);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * .55);
+        ctx.quadraticCurveTo(cx + r * .12, cy - r * .9, cx + r * .2, cy - r * 1.05);
+        ctx.stroke();
+        ctx.fillStyle = "#43a047";
+        ctx.beginPath();
+        ctx.ellipse(cx + r * .55, cy - r * .92, r * .5, r * .26, -.5, 0, Math.PI * 2);
+        ctx.fill();
+        appleShape(cx, cy, r);
+        const red = ctx.createRadialGradient(cx - r * .3, cy - r * .35, r * .1, cx, cy, r * 1.4);
+        red.addColorStop(0, "#ff7b6b");
+        red.addColorStop(.45, "#e53935");
+        red.addColorStop(1, "#b71c1c");
+        ctx.fillStyle = red;
+        ctx.fill();
+        ctx.strokeStyle = "#8e1414";
+        ctx.lineWidth = Math.max(.9, r * .13);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,.6)";
+        ctx.beginPath();
+        ctx.ellipse(cx - r * .35, cy - r * .2, r * .16, r * .3, -.4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function diamondMark(cx, cy, r) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 1.25);
+        ctx.lineTo(cx + r * .85, cy - r * .3);
+        ctx.lineTo(cx, cy + r * 1.25);
+        ctx.lineTo(cx - r * .85, cy - r * .3);
+        ctx.closePath();
+        const ice = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+        ice.addColorStop(0, "#e8f9ff");
+        ice.addColorStop(.5, "#7fd4fb");
+        ice.addColorStop(1, "#4fc3f7");
+        ctx.fillStyle = ice;
+        ctx.fill();
+        ctx.strokeStyle = "#2b8fd0";
+        ctx.lineWidth = Math.max(.9, r * .15);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(.7, r * .09);
+        ctx.beginPath();
+        ctx.moveTo(cx - r * .85, cy - r * .3);
+        ctx.lineTo(cx + r * .85, cy - r * .3);
+        ctx.moveTo(cx - r * .38, cy - r * .3);
+        ctx.lineTo(cx, cy - r * 1.25);
+        ctx.lineTo(cx + r * .38, cy - r * .3);
+        ctx.moveTo(cx - r * .38, cy - r * .3);
+        ctx.lineTo(cx, cy + r * 1.25);
+        ctx.moveTo(cx + r * .38, cy - r * .3);
+        ctx.lineTo(cx, cy + r * 1.25);
+        ctx.stroke();
+    }
+
+    function balloonMark(cx, cy, r, fill, line) {
+        ctx.strokeStyle = line;
+        ctx.lineWidth = Math.max(.9, r * .14);
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + r * .95);
+        ctx.quadraticCurveTo(cx + r * .5, cy + r * 1.5, cx - r * .05, cy + r * 2.1);
+        ctx.stroke();
+        const shine = ctx.createRadialGradient(cx - r * .35, cy - r * .4, r * .08, cx, cy, r * 1.3);
+        shine.addColorStop(0, "#ffffff");
+        shine.addColorStop(.4, fill);
+        shine.addColorStop(1, line);
+        ctx.fillStyle = shine;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r * .9, r, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = line;
+        ctx.lineWidth = Math.max(.8, r * .1);
+        ctx.stroke();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.moveTo(cx - r * .18, cy + r * .95);
+        ctx.lineTo(cx + r * .18, cy + r * .95);
+        ctx.lineTo(cx, cy + r * 1.28);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function butterflyMark(cx, cy, r) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "#e79ab4";
+        ctx.lineWidth = Math.max(.7, r * .11);
+        ctx.fillStyle = "#f8bbd0";
+        [-1, 1].forEach(side => {
+            ctx.beginPath();
+            ctx.ellipse(side * r * .6, -r * .45, r * .55, r * .45, side * .55, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(side * r * .48, r * .45, r * .42, r * .36, -side * .5, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+        });
+        ctx.strokeStyle = "#2fbfd6";
+        ctx.lineCap = "round";
+        ctx.lineWidth = Math.max(.9, r * .17);
+        ctx.beginPath();
+        ctx.moveTo(0, -r * .5);
+        ctx.lineTo(0, r * .72);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(.7, r * .1);
+        ctx.beginPath();
+        ctx.moveTo(0, -r * .5);
+        ctx.quadraticCurveTo(-r * .28, -r * .92, -r * .45, -r * 1.05);
+        ctx.moveTo(0, -r * .5);
+        ctx.quadraticCurveTo(r * .28, -r * .92, r * .45, -r * 1.05);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function weatherBoltMark(r) {
+        // Fluffy cloud with a rainbow bolt dropping from it.
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#00a0e3";
+        ctx.lineWidth = Math.max(1, r * .1);
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.arc(-r * .5, -r * .42, r * .34, Math.PI * .55, Math.PI * 1.55);
+        ctx.arc(-r * .05, -r * .72, r * .4, Math.PI * 1.05, Math.PI * 1.95);
+        ctx.arc(r * .48, -r * .45, r * .36, Math.PI * 1.45, Math.PI * .55);
+        ctx.lineTo(r * .78, -r * .08);
+        ctx.lineTo(-r * .82, -r * .08);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.save();
+        ctx.translate(0, r * .42);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        const zig = [[-r * .3, -r * .55], [r * .16, -r * .18], [-r * .08, -r * .02], [r * .3, r * .45]];
+        [["#1982c4", r * .34], ["#ffca3a", r * .22], ["#ff595e", r * .1]].forEach(([color, w]) => {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = w;
+            ctx.beginPath();
+            zig.forEach(([px, py], i) => { if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); });
+            ctx.stroke();
+        });
+        ctx.restore();
+    }
+
+    function drawCutieMark(x, y, size) {
+        const pony = ponySelect.value;
+        const s = size;
+        ctx.save();
+        ctx.translate(x, y + Math.sin(tick * 0.09 + x * 0.03) * 3);
+        ctx.rotate(Math.sin(tick * 0.055 + x * 0.02) * .16);
+        // Soft white glow drawn with no shadow, so it never reads as a smudge.
+        const halo = ctx.createRadialGradient(0, 0, s * .2, 0, 0, s * 1.06);
+        halo.addColorStop(0, "rgba(255,255,255,.7)");
+        halo.addColorStop(.6, "rgba(255,255,255,.3)");
+        halo.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 1.06, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = "rgba(70, 45, 60, .22)";
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 2;
+
+
+        if (pony === "Twilight Sparkle") {
+            for (let i = 0; i < 5; i++) {
+                const a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+                star6(Math.cos(a) * s * .8, Math.sin(a) * s * .8, s * .21, -Math.PI / 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.fill();
+                ctx.strokeStyle = "#c8b4e6";
+                ctx.lineWidth = Math.max(.7, s * .05);
+                ctx.stroke();
+            }
+            star6(0, 0, s * .62, -Math.PI / 2);
+            const magenta = ctx.createRadialGradient(-s * .15, -s * .22, s * .05, 0, 0, s * .8);
+            magenta.addColorStop(0, "#ff6fb1");
+            magenta.addColorStop(1, "#e0217d");
+            ctx.fillStyle = magenta;
+            ctx.fill();
+            ctx.strokeStyle = "#a8125c";
+            ctx.lineWidth = Math.max(.9, s * .06);
+            ctx.stroke();
+        } else if (pony === "Pinkie Pie") {
+            balloonMark(-s * .45, s * .3, s * .42, "#4fc3f7", "#2b8fd0");
+            balloonMark(s * .45, s * .3, s * .42, "#4fc3f7", "#2b8fd0");
+            balloonMark(0, -s * .42, s * .44, "#fff176", "#e0c93f");
+        } else if (pony === "Fluttershy") {
+            butterflyMark(-s * .48, -s * .34, s * .3);
+            butterflyMark(s * .48, -s * .34, s * .3);
+            butterflyMark(0, s * .5, s * .32);
+        } else if (pony === "Applejack") {
+            appleMark(0, -s * .5, s * .34);
+            appleMark(-s * .46, s * .4, s * .34);
+            appleMark(s * .46, s * .4, s * .34);
+        } else if (pony === "Rarity") {
+            diamondMark(-s * .45, -s * .34, s * .34);
+            diamondMark(s * .45, -s * .34, s * .34);
+            diamondMark(0, s * .48, s * .34);
+        } else {
+            weatherBoltMark(s * .95);
+        }
+        ctx.restore();
+    }
+
+
+    function drawJumpEffect() {
+        if (jumpY <= 0) return;
+        const pony = ponySelect.value;
+        const bob = Math.sin(tick * 0.25) * 3;
+        const x = ponyX + 54;
+        const y = groundY - jumpY - 25 + bob;
+        ctx.save();
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+
+
+        if (pony === "Rainbow Dash") {
+            ["#ff595e", "#ffca3a", "#8ac926", "#1982c4"].forEach((color, i) => {
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y + 12, 22 - i * 4, Math.PI, Math.PI * 2);
+                ctx.stroke();
+            });
+        } else if (pony === "Twilight Sparkle") {
+            [[x - 8, y], [x + 12, y + 10]].forEach(([bookX, bookY], i) => {
+                ctx.fillStyle = i ? "#ff4a8e" : "#6c63a8";
+                ctx.fillRect(bookX, bookY, 15, 19);
+                ctx.fillStyle = "#fff3c4";
+                ctx.fillRect(bookX + 3, bookY + 3, 9, 12);
+                ctx.strokeStyle = "#493f72";
+                ctx.strokeRect(bookX, bookY, 15, 19);
+            });
+        } else if (pony === "Pinkie Pie") {
+            [[x, y + 8], [x + 22, y]].forEach(([cakeX, cakeY], i) => {
+                ctx.fillStyle = "#ffb3c1";
+                ctx.beginPath();
+                ctx.moveTo(cakeX, cakeY + 19);
+                ctx.lineTo(cakeX + 18, cakeY + 19);
+                ctx.lineTo(cakeX + 15, cakeY + 8);
+                ctx.lineTo(cakeX + 3, cakeY + 8);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = i ? "#ff4a8e" : "#f78fb3";
+                ctx.beginPath();
+                ctx.arc(cakeX + 9, cakeY + 7, 8, Math.PI, 0);
+                ctx.fill();
+                ["#ffca3a", "#1982c4", "#8ac926"].forEach((color, j) => {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(cakeX + 4 + j * 4, cakeY + 3 + (j % 2) * 3, 2, 2);
+                });
+            });
+        } else if (pony === "Fluttershy") {
+            // Mariposas con alas de colores y pequeños conejos.
+            [[x + 2, y + 5], [x + 28, y + 18]].forEach(([bugX, bugY], i) => {
+                ctx.fillStyle = i ? "#ffb6c1" : "#f4a261";
+                ctx.beginPath();
+                ctx.ellipse(bugX - 4, bugY, 5, 4, -0.5, 0, Math.PI * 2);
+                ctx.ellipse(bugX + 4, bugY, 5, 4, 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#806040";
+                ctx.beginPath();
+                ctx.moveTo(bugX, bugY - 3);
+                ctx.lineTo(bugX, bugY + 5);
+                ctx.stroke();
+            });
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.arc(x + 17, y + 27, 7, 0, Math.PI * 2);
+            ctx.ellipse(x + 13, y + 18, 2, 6, -0.2, 0, Math.PI * 2);
+            ctx.ellipse(x + 20, y + 18, 2, 6, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (pony === "Rarity") {
+            [[x + 2, y + 12], [x + 25, y + 2]].forEach(([gemX, gemY], i) => {
+                ctx.fillStyle = i ? "#20c997" : "#8e44ad";
+                ctx.beginPath();
+                ctx.moveTo(gemX + 8, gemY);
+                ctx.lineTo(gemX + 16, gemY + 7);
+                ctx.lineTo(gemX + 8, gemY + 19);
+                ctx.lineTo(gemX, gemY + 7);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+        } else if (pony === "Applejack") {
+            [[x + 2, y + 10], [x + 25, y]].forEach(([appleX, appleY]) => {
+                ctx.fillStyle = "#e63946";
+                ctx.beginPath();
+                ctx.arc(appleX + 5, appleY + 9, 7, 0, Math.PI * 2);
+                ctx.arc(appleX + 13, appleY + 9, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#2a9d46";
+                ctx.beginPath();
+                ctx.ellipse(appleX + 11, appleY + 1, 5, 2, -0.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        ctx.restore();
+    }
+
+
+    function drawCloud(x, y, scale = 1, palette = ["#ffffff", "#c9dce8"]) {
+        ctx.save();
+        const bob = Math.sin(tick * 0.025 + x * 0.03) * 4;
+        ctx.translate(x, y + bob);
+        ctx.scale(scale, scale);
+        ctx.shadowColor = "rgba(52, 69, 105, .24)";
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetY = 8;
+        const shade = ctx.createLinearGradient(0, -27, 0, 27);
+        shade.addColorStop(0, "#ffffff");
+        shade.addColorStop(0.45, palette[0]);
+        shade.addColorStop(1, palette[1]);
+        ctx.fillStyle = shade;
+        ctx.beginPath();
+        ctx.moveTo(-57, 16);
+        ctx.bezierCurveTo(-72, 5, -65, -17, -45, -18);
+        ctx.bezierCurveTo(-43, -42, -11, -48, 2, -29);
+        ctx.bezierCurveTo(19, -48, 49, -35, 48, -12);
+        ctx.bezierCurveTo(72, -9, 76, 15, 57, 24);
+        ctx.bezierCurveTo(44, 36, -41, 36, -57, 16);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.strokeStyle = "rgba(90, 105, 135, .24)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,255,255,.66)";
+        ctx.beginPath();
+        ctx.ellipse(-13, -22, 22, 9, -.2, 0, Math.PI * 2);
+        ctx.ellipse(24, -11, 15, 7, .2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+
+    function drawScenery() {
+        const bgImage = bgImages[bgSelect.value];
+        if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
+            // Cover-fit the panorama: proportions hold, right side (main building) stays visible.
+            const fit = Math.max(750 / bgImage.naturalWidth, 450 / bgImage.naturalHeight);
+            const dw = bgImage.naturalWidth * fit;
+            const dh = bgImage.naturalHeight * fit;
+            ctx.drawImage(bgImage, 750 - dw, 450 - dh, dw, dh);
+            drawStaticFloor();
+            ctx.textAlign = "left";
+            return;
+        }
+        const colors = skies[bgSelect.value] || skies.cloud;
+        const sky = ctx.createLinearGradient(0, 0, 0, groundY + 40);
+        sky.addColorStop(0, colors[0]);
+        sky.addColorStop(1, "#ffffff");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, 750, 450);
+
+
+        const glow = ctx.createRadialGradient(590, 70, 8, 590, 70, 180);
+        glow.addColorStop(0, "rgba(255,255,220,.7)");
+        glow.addColorStop(1, "rgba(255,255,220,0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(400, 0, 350, 250);
+
+
+        const scene = bgSelect.value;
+        // Rounded distant hills keep the homes behind the running lane.
+        ctx.fillStyle = scene === "cloud" ? "#e6f5fb" : "#d7e5d3";
+        ctx.beginPath();
+        ctx.moveTo(0, 310);
+        ctx.bezierCurveTo(45, 274, 70, 245, 112, 252);
+        ctx.bezierCurveTo(157, 255, 171, 300, 215, 286);
+        ctx.bezierCurveTo(252, 271, 265, 222, 310, 226);
+        ctx.bezierCurveTo(360, 230, 370, 299, 422, 288);
+        ctx.bezierCurveTo(466, 280, 475, 236, 520, 239);
+        ctx.bezierCurveTo(565, 242, 580, 300, 626, 286);
+        ctx.bezierCurveTo(669, 274, 681, 237, 714, 245);
+        ctx.quadraticCurveTo(736, 250, 750, 278);
+        ctx.lineTo(750, 370); ctx.lineTo(0, 370); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = scene === "cloud" ? "rgba(255,255,255,.48)" : "rgba(83,125,88,.16)";
+        ctx.beginPath();
+        ctx.moveTo(0, 337); ctx.bezierCurveTo(170, 292, 280, 350, 420, 322);
+        ctx.bezierCurveTo(560, 292, 660, 322, 750, 305); ctx.lineTo(750, 370);
+        ctx.lineTo(0, 370); ctx.closePath(); ctx.fill();
+        // Scale around the horizon so houses stay small and never sit on top of the pony.
+        ctx.save();
+        ctx.globalAlpha = 0.8;
+        ctx.translate(615, 292);
+        ctx.scale(0.30, 0.30);
+        ctx.translate(-615, -groundY);
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.shadowColor = "rgba(54, 54, 72, .2)";
+        ctx.shadowBlur = 7;
+        ctx.shadowOffsetY = 4;
+        if (scene === "cloud") {
+            ctx.fillStyle = "rgba(255,255,255,.72)";
+            ctx.fillRect(0, 285, 750, 85);
+            ctx.fillStyle = "#fff";
+            for (let i = 0; i < 5; i++) {
+                const bx = 35 + i * 160;
+                ctx.beginPath();
+                ctx.ellipse(bx, 294, 92, 25, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.fillStyle = "#f8fcff";
+            ctx.fillRect(555, 205, 112, 80);
+            ctx.beginPath();
+            ctx.moveTo(540, 208);
+            ctx.lineTo(611, 164);
+            ctx.lineTo(682, 208);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillRect(576, 177, 18, 30);
+            ctx.fillRect(632, 177, 18, 30);
+            ctx.fillStyle = "#a9d8f0";
+            for (let wx = 572; wx <= 640; wx += 42) {
+                ctx.fillRect(wx, 226, 20, 27);
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(wx, 226, 20, 27);
+            }
+            ctx.fillStyle = "#d7effa";
+            ctx.fillRect(601, 247, 20, 38);
+        } else if (scene === "tree") {
+            ctx.fillStyle = "#8b5e3c";
+            ctx.fillRect(560, 158, 82, 212);
+            ctx.fillStyle = "#6b8f53";
+            [[560, 146, 84], [615, 116, 93], [670, 155, 72], [585, 91, 65]].forEach(([x, y, r]) => {
+                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+            });
+            ctx.fillStyle = "#a9d6bd";
+            ctx.beginPath(); ctx.arc(603, 242, 25, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#f6e7b2"; ctx.lineWidth = 5; ctx.stroke();
+            ctx.fillStyle = "#774b32";
+            ctx.fillRect(594, 267, 18, 43);
+            ctx.fillStyle = "#d7e8b2";
+            ctx.beginPath(); ctx.ellipse(559, 351, 75, 17, 0, 0, Math.PI * 2); ctx.fill();
+        } else if (scene === "sugar") {
+            ctx.fillStyle = "#f4a6b8";
+            ctx.fillRect(538, 226, 155, 111);
+            ctx.fillStyle = "#fff1d6";
+            ctx.beginPath(); ctx.moveTo(520, 230); ctx.lineTo(615, 166); ctx.lineTo(710, 230); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = "#ff78a5";
+            ctx.fillRect(535, 219, 161, 14);
+            for (let i = 0; i < 6; i++) {
+                ctx.fillStyle = i % 2 ? "#fff" : "#ff78a5";
+                ctx.beginPath(); ctx.moveTo(536 + i * 27, 232); ctx.lineTo(563 + i * 27, 232); ctx.lineTo(550 + i * 27, 251); ctx.closePath(); ctx.fill();
+            }
+            ctx.fillStyle = "#b6e3e8"; ctx.fillRect(552, 263, 44, 46); ctx.fillRect(636, 263, 42, 46);
+            ctx.strokeStyle = "#fff4df"; ctx.lineWidth = 5; ctx.strokeRect(552, 263, 44, 46); ctx.strokeRect(636, 263, 42, 46);
+            ctx.fillStyle = "#fff0cf"; ctx.fillRect(603, 281, 26, 56);
+            ctx.fillStyle = "#fff"; ctx.font = "bold 15px Arial"; ctx.textAlign = "center"; ctx.fillText("SWEETS", 615, 256);
+        } else if (scene === "cottage") {
+            ctx.fillStyle = "#7c9b5b";
+            ctx.beginPath(); ctx.ellipse(620, 338, 174, 44, 0, Math.PI, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#f4e8cf"; ctx.fillRect(560, 248, 125, 91);
+            ctx.fillStyle = "#a66b48"; ctx.beginPath(); ctx.moveTo(542, 253); ctx.lineTo(621, 192); ctx.lineTo(703, 253); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = "#a9d6de"; ctx.fillRect(576, 270, 27, 27); ctx.fillRect(642, 270, 27, 27);
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.strokeRect(576, 270, 27, 27); ctx.strokeRect(642, 270, 27, 27);
+            ctx.fillStyle = "#81543b"; ctx.fillRect(607, 292, 30, 47);
+            [[520, 317], [704, 316], [536, 342], [696, 346]].forEach(([x, y], i) => {
+                ctx.fillStyle = i % 2 ? "#f08ca8" : "#f4d35e";
+                ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = "#4f8a55"; ctx.fillRect(x - 1, y + 5, 2, 11);
+            });
+        } else if (scene === "boutique") {
+            ctx.fillStyle = "#d8b4e2"; ctx.fillRect(548, 214, 150, 124);
+            ctx.fillStyle = "#76508e"; ctx.beginPath(); ctx.moveTo(532, 218); ctx.lineTo(623, 165); ctx.lineTo(714, 218); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = "#f8d7f0"; ctx.fillRect(561, 231, 124, 16);
+            ctx.fillStyle = "#b6e3e8"; ctx.fillRect(562, 260, 40, 48); ctx.fillRect(645, 260, 39, 48);
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.strokeRect(562, 260, 40, 48); ctx.strokeRect(645, 260, 39, 48);
+            ctx.fillStyle = "#8e44ad"; ctx.fillRect(610, 279, 27, 59);
+            ctx.fillStyle = "#fff"; ctx.font = "bold 15px Arial"; ctx.textAlign = "center"; ctx.fillText("BOUTIQUE", 623, 226);
+            ctx.fillStyle = "#f7d76a"; ctx.beginPath(); ctx.arc(623, 184, 8, 0, Math.PI * 2); ctx.fill();
+        } else if (scene === "barn") {
+            ctx.fillStyle = "#b47743"; ctx.fillRect(552, 231, 150, 108);
+            ctx.fillStyle = "#c63d3d"; ctx.beginPath(); ctx.moveTo(530, 237); ctx.lineTo(627, 165); ctx.lineTo(722, 237); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = "#f6e7c1"; ctx.beginPath(); ctx.moveTo(599, 339); ctx.lineTo(599, 270); ctx.lineTo(627, 249); ctx.lineTo(655, 270); ctx.lineTo(655, 339); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = "#b47743"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(602, 272); ctx.lineTo(652, 338); ctx.moveTo(652, 272); ctx.lineTo(602, 338); ctx.stroke();
+            ctx.fillStyle = "#e8c36a"; ctx.fillRect(500, 319, 39, 20); ctx.fillRect(687, 317, 42, 22);
+            ctx.fillStyle = "#58834b"; ctx.beginPath(); ctx.arc(516, 254, 30, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#e63946"; [[505, 251], [523, 262], [521, 242]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill(); });
+        }
+        // Fine architectural outlines and highlights help the homes read as distant landmarks.
+        ctx.save();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(70,55,70,.34)";
+        if (scene === "cloud") {
+            ctx.strokeRect(555, 205, 112, 80);
+            ctx.beginPath(); ctx.moveTo(540, 208); ctx.lineTo(611, 164); ctx.lineTo(682, 208); ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(611, 170); ctx.lineTo(670, 207); ctx.stroke();
+        } else if (scene === "tree") {
+            ctx.strokeStyle = "rgba(70,48,38,.38)"; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(576, 180); ctx.quadraticCurveTo(604, 203, 631, 183); ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255,.42)"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(577, 219); ctx.lineTo(592, 215); ctx.moveTo(620, 224); ctx.lineTo(635, 218); ctx.stroke();
+        } else if (scene === "sugar") {
+            ctx.strokeRect(538, 226, 155, 111);
+            ctx.beginPath(); ctx.moveTo(520, 230); ctx.lineTo(615, 166); ctx.lineTo(710, 230); ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(615, 173); ctx.lineTo(696, 228); ctx.stroke();
+        } else if (scene === "cottage") {
+            ctx.strokeRect(560, 248, 125, 91);
+            ctx.beginPath(); ctx.moveTo(542, 253); ctx.lineTo(621, 192); ctx.lineTo(703, 253); ctx.stroke();
+        } else if (scene === "boutique") {
+            ctx.strokeRect(548, 214, 150, 124);
+            ctx.beginPath(); ctx.moveTo(532, 218); ctx.lineTo(623, 165); ctx.lineTo(714, 218); ctx.stroke();
+        } else if (scene === "barn") {
+            ctx.strokeRect(552, 231, 150, 108);
+            ctx.beginPath(); ctx.moveTo(530, 237); ctx.lineTo(627, 165); ctx.lineTo(722, 237); ctx.stroke();
+        }
+        // Subtle window reflections and divisions make the distant homes easier to read.
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.strokeStyle = "rgba(255,255,255,.72)";
+        ctx.lineWidth = 2.5;
+        if (scene === "cloud") {
+            ctx.beginPath(); ctx.moveTo(582, 227); ctx.lineTo(582, 252); ctx.moveTo(572, 239); ctx.lineTo(592, 239);
+            ctx.moveTo(650, 227); ctx.lineTo(650, 252); ctx.moveTo(640, 239); ctx.lineTo(660, 239); ctx.stroke();
+        } else if (scene === "sugar") {
+            ctx.beginPath(); ctx.moveTo(574, 264); ctx.lineTo(574, 308); ctx.moveTo(552, 286); ctx.lineTo(596, 286);
+            ctx.moveTo(657, 264); ctx.lineTo(657, 308); ctx.moveTo(636, 286); ctx.lineTo(678, 286); ctx.stroke();
+        } else if (scene === "cottage") {
+            ctx.beginPath(); ctx.moveTo(589, 270); ctx.lineTo(589, 297); ctx.moveTo(576, 283); ctx.lineTo(603, 283);
+            ctx.moveTo(655, 270); ctx.lineTo(655, 297); ctx.moveTo(642, 283); ctx.lineTo(669, 283); ctx.stroke();
+        } else if (scene === "boutique") {
+            ctx.beginPath(); ctx.moveTo(582, 260); ctx.lineTo(582, 308); ctx.moveTo(562, 284); ctx.lineTo(602, 284);
+            ctx.moveTo(664, 260); ctx.lineTo(664, 308); ctx.moveTo(645, 284); ctx.lineTo(684, 284); ctx.stroke();
+        } else if (scene === "tree") {
+            ctx.beginPath(); ctx.moveTo(584, 242); ctx.lineTo(622, 242); ctx.moveTo(603, 223); ctx.lineTo(603, 261); ctx.stroke();
+        }
+        ctx.fillStyle = "rgba(255,245,190,.9)";
+        if (scene === "cloud") ctx.beginPath(), ctx.arc(618, 266, 2, 0, Math.PI * 2), ctx.fill();
+        else if (scene === "sugar") ctx.beginPath(), ctx.arc(623, 304, 2, 0, Math.PI * 2), ctx.fill();
+        else if (scene === "cottage") ctx.beginPath(), ctx.arc(630, 316, 2, 0, Math.PI * 2), ctx.fill();
+        else if (scene === "boutique") ctx.beginPath(), ctx.arc(632, 310, 2, 0, Math.PI * 2), ctx.fill();
+        ctx.restore();
+        ctx.restore();
+        ctx.restore();
+
+
+        // A low, soft ridge adds another layer between the distant homes and the track.
+        ctx.fillStyle = scene === "cloud" ? "rgba(190,222,239,.48)" : "rgba(91,132,92,.22)";
+        ctx.beginPath();
+        ctx.moveTo(0, 344);
+        ctx.bezierCurveTo(145, 316, 235, 351, 365, 331);
+        ctx.bezierCurveTo(500, 310, 620, 345, 750, 322);
+        ctx.lineTo(750, 370); ctx.lineTo(0, 370); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = scene === "cloud" ? "rgba(255,255,255,.32)" : "rgba(65,112,76,.16)";
+        [[70, 331, 12], [164, 339, 9], [530, 331, 11], [710, 334, 14]].forEach(([treeX, treeY, size]) => {
+            ctx.beginPath();
+            ctx.arc(treeX, treeY, size, 0, Math.PI * 2);
+            ctx.arc(treeX - size * .7, treeY + 4, size * .7, 0, Math.PI * 2);
+            ctx.arc(treeX + size * .7, treeY + 4, size * .72, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+
+        const cloudPalette = ponyCloudColors[ponySelect.value] || ponyCloudColors["Rainbow Dash"];
+        for (let i = 0; i < 5; i++) {
+            const x = ((i * 205 - tick * 0.38) % 1000 + 1000) % 1000 - 100;
+            drawCloud(x, 88 + (i % 2) * 48, 1.28 + (i % 3) * 0.2, cloudPalette);
+        }
+        ctx.fillStyle = colors[2];
+        ctx.fillRect(0, groundY, 750, 80);
+        const groundShade = ctx.createLinearGradient(0, groundY, 0, 450);
+        groundShade.addColorStop(0, "rgba(255,255,255,.2)");
+        groundShade.addColorStop(1, "rgba(80,60,40,.13)");
+        ctx.fillStyle = groundShade;
+        ctx.fillRect(0, groundY, 750, 80);
+        ctx.fillStyle = scene === "cloud" ? "#b9dff0" : "#87634e";
+        ctx.fillRect(0, groundY, 750, 8);
+        ctx.strokeStyle = scene === "cloud" ? "rgba(90,140,170,.25)" : "rgba(90,70,50,.25)";
+        ctx.lineWidth = 3;
+        for (let x = -((tick * speed) % 45); x < 750; x += 45) {
+            ctx.beginPath();
+            ctx.moveTo(x, groundY + 23);
+            ctx.lineTo(x + 20, groundY + 23);
+            ctx.stroke();
+        }
+        ctx.textAlign = "left";
+    }
+
+
+    function drawHud() {
+        ctx.fillStyle = "rgba(255,255,255,.9)";
+        ctx.fillRect(0, 0, 750, 48);
+        ctx.fillStyle = "#2d3748";
+        ctx.font = "bold 18px Arial";
+        ctx.textAlign = "left";
+        ctx.fillText("Puntos: " + Math.floor(score), 18, 30);
+        ctx.textAlign = "right";
+        ctx.fillText("Cutie Marks: " + collected, 730, 30);
+        if (score >= 67) {
+            ctx.textAlign = "center";
+            ctx.font = "bold 14px Arial";
+            ctx.fillText("↓ ¡Agáchate!", 375, 30);
+        }
+        ctx.textAlign = "left";
+    }
+
+
+    function drawThemedObstacle(x, baseline = groundY) {
+        const pony = ponySelect.value;
+        if (pony === "Pinkie Pie" && baseline >= groundY && cupcakeImage.complete && cupcakeImage.naturalWidth > 0) {
+            // Light floating frosting platform with the cupcake Pinkie must jump over.
+            ctx.save();
+            const hover = Math.sin(tick * .1 + x * .03) * 1.5;
+            ctx.fillStyle = "rgba(120,40,80,.18)";
+            ctx.beginPath(); ctx.ellipse(x + 23, groundY + 2, 30, 4, 0, 0, Math.PI * 2); ctx.fill();
+            const py = groundY - 10 + hover;
+            const slab = ctx.createLinearGradient(0, py, 0, py + 9);
+            slab.addColorStop(0, "#fff4fa"); slab.addColorStop(1, "#ffb6d5");
+            ctx.fillStyle = slab;
+            ctx.strokeStyle = "#e05a9a"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(x - 6, py, 58, 9, 5); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = "#ffffff";
+            [[x + 4, "#5bc8f5"], [x + 18, "#ffe08a"], [x + 32, "#9d4edd"], [x + 44, "#ff5fa2"]].forEach(([sx, c]) => {
+                ctx.fillStyle = c; ctx.fillRect(sx, py + 3, 5, 2);
+            });
+            const ch = 34, cw = ch * cupcakeImage.naturalWidth / cupcakeImage.naturalHeight;
+            ctx.drawImage(cupcakeImage, x + 23 - cw / 2, py - ch + 1, cw, ch);
+            ctx.restore();
+            return;
+        }
+        ctx.save();
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = "rgba(48, 42, 58, .18)";
+        const shadowY = baseline < groundY ? groundY : baseline;
+        ctx.beginPath();
+        ctx.ellipse(x + 23, shadowY - 1, 25, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        if (baseline < groundY) {
+            // Visible feathered wings identify airborne hazards at a glance.
+            ctx.fillStyle = "rgba(255,255,255,.92)";
+            ctx.strokeStyle = "rgba(77,99,125,.7)";
+            ctx.lineWidth = 2;
+            [[x + 5, baseline - 22, -1], [x + 41, baseline - 22, 1]].forEach(([wingX, wingY, direction]) => {
+                ctx.beginPath();
+                ctx.moveTo(wingX, wingY + 8);
+                ctx.quadraticCurveTo(wingX + direction * 2, wingY - 10, wingX + direction * 15, wingY - 15);
+                ctx.quadraticCurveTo(wingX + direction * 13, wingY - 3, wingX + direction * 8, wingY + 6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.strokeStyle = "rgba(125,145,168,.65)";
+                for (let feather = 0; feather < 3; feather++) {
+                    ctx.beginPath();
+                    ctx.moveTo(wingX + direction * feather * 3, wingY + 5);
+                    ctx.quadraticCurveTo(wingX + direction * (5 + feather * 3), wingY - 1, wingX + direction * (8 + feather * 2), wingY - 8);
+                    ctx.stroke();
+                }
+                ctx.strokeStyle = "rgba(77,99,125,.7)";
+            });
+        }
+        if (pony === "Rainbow Dash") {
+            ["#ff595e", "#ffca3a", "#8ac926", "#1982c4"].forEach((color, i) => {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(x + 24, baseline, 19 - i * 4, Math.PI, Math.PI * 2);
+                ctx.stroke();
+            });
+        } else if (pony === "Twilight Sparkle") {
+            [[x + 2, baseline - 15, "#6c63a8"], [x + 10, baseline - 28, "#ff4a8e"], [x + 22, baseline - 17, "#493f72"]].forEach(([bookX, bookY, color]) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(bookX, bookY, 17, 15);
+                ctx.fillStyle = "#fff3c4";
+                ctx.fillRect(bookX + 3, bookY + 3, 11, 9);
+                ctx.strokeStyle = "#382e5d";
+                ctx.strokeRect(bookX, bookY, 17, 15);
+            });
+        } else if (pony === "Pinkie Pie") {
+            ctx.fillStyle = "#ffb3c1";
+            ctx.beginPath();
+            ctx.moveTo(x + 9, baseline);
+            ctx.lineTo(x + 37, baseline);
+            ctx.lineTo(x + 33, baseline - 22);
+            ctx.lineTo(x + 13, baseline - 22);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "#f78fb3";
+            ctx.beginPath();
+            ctx.arc(x + 23, baseline - 21, 13, Math.PI, 0);
+            ctx.fill();
+            ["#ffca3a", "#1982c4", "#8ac926", "#9b5de5"].forEach((color, i) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + 15 + i * 5, baseline - 25 + (i % 2) * 5, 3, 3);
+            });
+        } else if (pony === "Fluttershy") {
+            ctx.fillStyle = "#ffb6c1";
+            ctx.beginPath();
+            ctx.ellipse(x + 12, baseline - 24, 8, 6, -0.5, 0, Math.PI * 2);
+            ctx.ellipse(x + 24, baseline - 24, 8, 6, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#806040";
+            ctx.beginPath();
+            ctx.moveTo(x + 18, baseline - 27);
+            ctx.lineTo(x + 18, baseline - 17);
+            ctx.stroke();
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.arc(x + 36, baseline - 9, 8, 0, Math.PI * 2);
+            ctx.ellipse(x + 33, baseline - 20, 2, 6, -0.2, 0, Math.PI * 2);
+            ctx.ellipse(x + 39, baseline - 20, 2, 6, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (pony === "Rarity") {
+            [[x + 3, baseline - 31, "#8e44ad"], [x + 24, baseline - 27, "#20c997"]].forEach(([gemX, gemY, color]) => {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(gemX + 9, gemY);
+                ctx.lineTo(gemX + 18, gemY + 9);
+                ctx.lineTo(gemX + 9, gemY + 25);
+                ctx.lineTo(gemX, gemY + 9);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = "#fff";
+                ctx.stroke();
+            });
+        } else if (pony === "Applejack") {
+            [[x + 4, baseline - 19], [x + 22, baseline - 19]].forEach(([appleX, appleY]) => {
+                ctx.fillStyle = "#e63946";
+                ctx.beginPath();
+                ctx.arc(appleX + 7, appleY + 8, 8, 0, Math.PI * 2);
+                ctx.arc(appleX + 15, appleY + 8, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#2a9d46";
+                ctx.beginPath();
+                ctx.ellipse(appleX + 13, appleY - 1, 5, 2, -0.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "rgba(91,35,42,.7)";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+        }
+        if (baseline < groundY) {
+            ctx.fillStyle = "rgba(255,255,255,.88)";
+            ctx.beginPath();
+            ctx.arc(x + 22, baseline - 43, 2.5, 0, Math.PI * 2);
+            ctx.arc(x + 49, baseline - 31, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+
+    function drawGame() {
+        drawScenery();
+        obstacles.forEach(obstacle => {
+            if (obstacle.type === "air") {
+                const floatY = Math.sin(tick * .08 + obstacle.x * .025) * 2;
+                drawThemedObstacle(obstacle.x, groundY - 54 + floatY);
+            } else {
+                drawThemedObstacle(obstacle.x);
+            }
+        });
+        marks.forEach(mark => {
+            drawCutieMark(mark.x, mark.y, 19);
+        });
+        drawPony(ponyX, groundY, ponies[ponySelect.value], jumpY, state === "running" || state === "falling", isCrouching, fallAngle);
+        drawHud();
+    }
+
+
+    function drawMessage(title, subtitle) {
+        ctx.fillStyle = "rgba(255,255,255,.78)";
+        ctx.fillRect(0, 0, 750, 450);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#2d3748";
+        ctx.font = "bold 38px Arial";
+        ctx.fillText(title, 375, 180);
+        ctx.font = "20px Arial";
+        ctx.fillText(subtitle, 375, 225);
+        ctx.font = "bold 18px Arial";
+        ctx.fillText("Salta con Espacio o ↑ · recoge Cutie Marks ★", 375, 270);
+    }
+
+
+    function updateGame() {
+        tick++;
+        score += 0.12;
+        speed = Math.min(11, 5 + score / 220);
+        if (jumpY > 0 || jumpVelocity > 0) {
+            jumpY += jumpVelocity;
+            jumpVelocity -= 0.62;
+            if (jumpY <= 0) {
+                jumpY = 0;
+                jumpVelocity = 0;
+            }
+        }
+        obstacleTimer--;
+        if (obstacleTimer <= 0) {
+            if (score >= 67 && Math.random() < 0.45) {
+                obstacles.push({ x: 770, width: 52, height: 0, type: "air" });
+            } else {
+                obstacles.push({ x: 770, width: 46, height: 34, type: "ground" });
+            }
+            obstacleTimer = 75 + Math.random() * 55 - Math.min(20, speed * 1.5);
+        }
+        markTimer--;
+        if (markTimer <= 0) {
+            marks.push({ x: 770, y: groundY - 75 - Math.random() * 45 });
+            markTimer = 85 + Math.random() * 55;
+        }
+        obstacles.forEach(obstacle => obstacle.x -= speed);
+        marks.forEach(mark => mark.x -= speed + 1.5);
+        obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > 0);
+        marks = marks.filter(mark => mark.x + 24 > 0);
+
+
+        const ponyLeft = ponyX + 10;
+        const ponyRight = ponyX + 49;
+        const ponyBottom = groundY - jumpY - 4;
+        if (state === "running") {
+            for (const obstacle of obstacles) {
+                const overlapsX = ponyRight > obstacle.x && ponyLeft < obstacle.x + obstacle.width;
+                const hitsAirObstacle = obstacle.type === "air" && (!isCrouching || jumpY > 0);
+                const hitsGroundObstacle = obstacle.type !== "air" && ponyBottom > groundY - obstacle.height + 5;
+                if (overlapsX && (hitsAirObstacle || hitsGroundObstacle)) {
+                    state = "falling";
+                    isCrouching = false;
+                    fallFrames = 0;
+                    break;
+                }
+            }
+        } else if (state === "falling") {
+            fallFrames++;
+            fallAngle = Math.min(1.35, fallFrames * 0.075);
+            if (fallFrames >= 24) {
+                state = "gameover";
+                saveCurrentScore();
+                pauseBtn.disabled = true;
+                document.getElementById("welcomeTitle").textContent = "¡Fin de la carrera, " + activePlayerName + "!";
+                document.getElementById("welcomeSubtitle").textContent = "Puntos: " + Math.floor(score) + " · Cutie Marks: " + collected;
+                actionBtn.textContent = "¡Iniciar carrera!";
+                continueBtn.textContent = "Volver a elegir poni";
+                menuPanel.hidden = true;
+                restartBtn.hidden = false;
+                welcomeOverlay.hidden = false;
+            }
+        }
+        marks = marks.filter(mark => {
+            const caught = ponyRight > mark.x - 17 && ponyLeft < mark.x + 17 &&
+                groundY - jumpY - 48 < mark.y + 17 && groundY - jumpY > mark.y - 17;
+            if (caught) {
+                collected++;
+                score += 25;
+            }
+            return !caught;
+        });
+    }
+
+
+    function frame() {
+        if (state !== "paused") tick++;
+        drawScenery();
+        if (state === "menu") {
+            drawPony(ponyX, groundY, ponies[ponySelect.value], 0, false);
+            drawMessage("¡Carrera infinita!", "Toca «¡A correr!» para comenzar");
+        } else if (state === "running" || state === "falling") {
+            updateGame();
+            drawGame();
+        } else if (state === "paused") {
+            drawGame();
+            drawMessage("⏸ Pausa", "Toca ▶ para continuar la carrera");
+        } else {
+            drawGame();
+            drawMessage("¡Fin de la carrera!", "Puntos: " + Math.floor(score) + " · Cutie Marks: " + collected);
+        }
+        requestAnimationFrame(frame);
+    }
+
+
+    frame();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+- [x] Animar las patas de Pinkie Pie al caminar.
+- [x] Reemplazar su casa y completar el fondo con la imagen enviada.
+- [x] Intercambiar X y Telegram por Instagram y TikTok y comprobar los cambios.
+- [x] Reemplazar las monedas genéricas por la cutie mark de cada poni.
